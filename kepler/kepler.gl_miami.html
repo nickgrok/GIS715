@@ -1,0 +1,229 @@
+
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8"/>
+        <title>Kepler.gl embedded map</title>
+
+        <!--Uber Font-->
+        <link rel="stylesheet" href="https://d1a3f4spazzrp4.cloudfront.net/kepler.gl/uber-fonts/4.0.0/superfine.css">
+
+        <!--MapBox css-->
+        <link href="https://api.tiles.mapbox.com/mapbox-gl-js/v1.1.1/mapbox-gl.css" rel="stylesheet">
+
+        <!-— facebook open graph tags -->
+        <meta property="og:url" content="http://kepler.gl/" />
+        <meta property="og:title" content="Large-scale WebGL-powered Geospatial Data Visualization Tool" />
+        <meta property="og:description" content="Kepler.gl is a powerful web-based geospatial data analysis tool. Built on a high performance rendering engine and designed for large-scale data sets." />
+        <meta property="og:site_name" content="kepler.gl" />
+        <meta property="og:image" content="https://d1a3f4spazzrp4.cloudfront.net/kepler.gl/kepler.gl-meta-tag.png" />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:width" content="800" />
+        <meta property="og:image:height" content="800" />
+
+        <!-— twitter card tags -->
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:site" content="@uber">
+        <meta name="twitter:creator" content="@uber">
+        <meta name="twitter:title" content="Large-scale WebGL-powered Geospatial Data Visualization Tool">
+        <meta name="twitter:description" content="Kepler.gl is a powerful web-based geospatial data analysis tool. Built on a high performance rendering engine and designed for large-scale data sets.">
+        <meta name="twitter:image" content="https://d1a3f4spazzrp4.cloudfront.net/kepler.gl/kepler.gl-meta-tag.png" />
+
+        <!-- Load React/Redux -->
+        <script src="https://unpkg.com/react@16.8.4/umd/react.production.min.js" crossorigin></script>
+        <script src="https://unpkg.com/react-dom@16.8.4/umd/react-dom.production.min.js" crossorigin></script>
+        <script src="https://unpkg.com/redux@3.7.2/dist/redux.js" crossorigin></script>
+        <script src="https://unpkg.com/react-redux@7.1.3/dist/react-redux.min.js" crossorigin></script>
+        <script src="https://unpkg.com/styled-components@4.1.3/dist/styled-components.min.js" crossorigin></script>
+
+        <!-- Load Kepler.gl -->
+        <script src="https://unpkg.com/kepler.gl@2.5.1/umd/keplergl.min.js" crossorigin></script>
+
+        <style type="text/css">
+          body {margin: 0; padding: 0; overflow: hidden;}
+        </style>
+
+        <!--MapBox token-->
+        <script>
+          /**
+           * Provide your MapBox Token
+           **/
+          const MAPBOX_TOKEN = 'pk.eyJ1Ijoibmlja2dyb2siLCJhIjoiY2trY3ljajF6MG1nYzJvcGJpeGg5a2VjcSJ9.ajW_4Up4s_tV8BwkhRBJTw';
+          const WARNING_MESSAGE = 'Please Provide a Mapbox Token in order to use Kepler.gl. Edit this file and fill out MAPBOX_TOKEN with your access key';
+        </script>
+
+        <!-- GA: Delete this as you wish, However to pat ourselves on the back, we only track anonymous pageview to understand how many people are using kepler.gl. -->
+        <script>
+          (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+          (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+          m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+          })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+          ga('create', 'UA-64694404-19', {
+            'storage': 'none',
+            'clientId': localStorage.getItem('ga:clientId')
+          });
+          ga(function(tracker) {
+              localStorage.setItem('ga:clientId', tracker.get('clientId'));
+          });
+          ga('set', 'checkProtocolTask', null); // Disable file protocol checking.
+          ga('set', 'checkStorageTask', null); // Disable cookie storage checking.
+          ga('set', 'historyImportTask', null); // Disable history checking (requires reading from cookies).
+          ga('set', 'page', 'keplergl-html');
+          ga('send', 'pageview');
+        </script>
+      </head>
+      <body>
+        <!-- We will put our React component inside this div. -->
+        <div id="app">
+          <!-- Kepler.gl map will be placed here-->
+        </div>
+
+        <!-- Load our React component. -->
+        <script>
+          /* Validate Mapbox Token */
+          if ((MAPBOX_TOKEN || '') === '' || MAPBOX_TOKEN === 'PROVIDE_MAPBOX_TOKEN') {
+            alert(WARNING_MESSAGE);
+          }
+
+          /** STORE **/
+          const reducers = (function createReducers(redux, keplerGl) {
+            return redux.combineReducers({
+              // mount keplerGl reducer
+              keplerGl: keplerGl.keplerGlReducer.initialState({
+                uiState: {
+                  readOnly: true,
+                  currentModal: null
+                }
+              })
+            });
+          }(Redux, KeplerGl));
+
+          const middleWares = (function createMiddlewares(keplerGl) {
+            return keplerGl.enhanceReduxMiddleware([
+              // Add other middlewares here
+            ]);
+          }(KeplerGl));
+
+          const enhancers = (function craeteEnhancers(redux, middles) {
+            return redux.applyMiddleware(...middles);
+          }(Redux, middleWares));
+
+          const store = (function createStore(redux, enhancers) {
+            const initialState = {};
+
+            return redux.createStore(
+              reducers,
+              initialState,
+              redux.compose(enhancers)
+            );
+          }(Redux, enhancers));
+          /** END STORE **/
+
+          /** COMPONENTS **/
+          var KeplerElement = (function makeKeplerElement(react, keplerGl, mapboxToken) {
+            var LogoSvg = function LogoSvg() {
+              return react.createElement(
+                "div",
+                { className: "logo-container", style: {position: 'fixed', zIndex: 10000, padding: '4px'} },
+                  react.createElement(
+                    "svg",
+                    {
+                      className: "kepler_gl__logo",
+                      width: "107px",
+                      height: "21px",
+                      viewBox: "0 0 124 24"
+                    },
+                    react.createElement(
+                      "g",
+                      { transform: "translate(13.500000, 13.500000) rotate(45.000000) translate(-13.500000, -13.500000) translate(4.000000, 4.000000)" },
+                      react.createElement("rect", { x: "0", y: "6", transform: "matrix(2.535181e-06 1 -1 2.535181e-06 18.1107 6.0369)", fill: "#535C6C", width: "12.1", height: "12.1" }),
+                      react.createElement("rect", { x: "6", y: "0", transform: "matrix(2.535182e-06 1 -1 2.535182e-06 18.1107 -6.0369)", fill:"#1FBAD6", width: "12.1", height: "12.1" })
+                    ),
+                    react.createElement(
+                      "g",
+                      {},
+                      react.createElement("path", { fill:"#1FBAD6", d: "M39,8.7h2.2l-2.8,4.2l2.9,5.1H39l-2.4-4.2h-1.3V18h-2V5l2-0.1v7.3h1.3L39,8.7z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M42.4,13.3c0-1.5,0.4-2.7,1.1-3.5s1.8-1.2,3.1-1.2c1.3,0,2.2,0.4,2.8,1.1c0.6,0.7,0.9,1.8,0.9,3.3 c0,0.4,0,0.8,0,1.1h-5.8c0,1.6,0.8,2.4,2.4,2.4c1,0,2-0.2,2.9-0.6l0.2,1.7c-0.4,0.2-0.9,0.4-1.4,0.5s-1.1,0.2-1.7,0.2 c-1.5,0-2.6-0.4-3.3-1.2C42.8,16.1,42.4,14.9,42.4,13.3z M46.6,10.1c-0.7,0-1.2,0.2-1.5,0.5c-0.4,0.4-0.6,0.9-0.6,1.7h4 c0-0.8-0.2-1.4-0.5-1.7S47.2,10.1,46.6,10.1z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M57.1,18.2c-1,0-1.8-0.3-2.3-0.9l0,0l0,1.3v2.5h-2V8.7h1.5l0.3,0.9h0c0.3-0.3,0.7-0.6,1.2-0.7 c0.4-0.2,0.9-0.3,1.4-0.3c1.2,0,2.1,0.4,2.7,1.1c0.6,0.7,0.9,2,0.9,3.7c0,1.6-0.3,2.8-1,3.7C59.2,17.8,58.3,18.2,57.1,18.2z M56.7,10.3c-0.4,0-0.8,0.1-1.1,0.2c-0.3,0.2-0.6,0.4-0.8,0.7v4.3c0.2,0.3,0.4,0.5,0.7,0.7c0.3,0.2,0.7,0.3,1.1,0.3 c0.7,0,1.2-0.2,1.6-0.7c0.4-0.5,0.5-1.3,0.5-2.5c0-0.8-0.1-1.4-0.2-1.8s-0.4-0.7-0.7-0.9C57.6,10.4,57.2,10.3,56.7,10.3z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M63.2,16V5l2-0.1v10.8c0,0.3,0.1,0.5,0.2,0.6c0.1,0.1,0.3,0.2,0.6,0.2c0.3,0,0.6,0,0.9-0.1V18 c-0.4,0.1-1,0.2-1.6,0.2c-0.8,0-1.3-0.2-1.7-0.5S63.2,16.8,63.2,16z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M68.2,13.3c0-1.5,0.4-2.7,1.1-3.5c0.7-0.8,1.8-1.2,3.1-1.2c1.3,0,2.2,0.4,2.8,1.1c0.6,0.7,0.9,1.8,0.9,3.3 c0,0.4,0,0.8,0,1.1h-5.8c0,1.6,0.8,2.4,2.4,2.4c1,0,2-0.2,2.9-0.6l0.2,1.7c-0.4,0.2-0.9,0.4-1.4,0.5s-1.1,0.2-1.7,0.2 c-1.5,0-2.6-0.4-3.3-1.2C68.6,16.1,68.2,14.9,68.2,13.3z M72.4,10.1c-0.7,0-1.2,0.2-1.5,0.5c-0.4,0.4-0.6,0.9-0.6,1.7h4 c0-0.8-0.2-1.4-0.5-1.7S73,10.1,72.4,10.1z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M80.2,8.7l0.1,1.7h0c0.3-0.6,0.7-1.1,1.1-1.4c0.4-0.3,1-0.5,1.6-0.5c0.4,0,0.7,0,1,0.1l-0.1,2 c-0.3-0.1-0.7-0.2-1-0.2c-0.7,0-1.3,0.3-1.7,0.8c-0.4,0.5-0.7,1.2-0.7,2.1V18h-2V8.7H80.2z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M83.8,17c0-0.8,0.4-1.2,1.2-1.2c0.8,0,1.2,0.4,1.2,1.2c0,0.8-0.4,1.1-1.2,1.1C84.2,18.2,83.8,17.8,83.8,17z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M88.5,18.7c0-0.8,0.4-1.4,1.2-1.8c-0.6-0.3-0.9-0.8-0.9-1.5c0-0.7,0.4-1.2,1.1-1.6c-0.3-0.3-0.6-0.6-0.7-0.9 c-0.2-0.4-0.2-0.8-0.2-1.3c0-1,0.3-1.8,0.9-2.3c0.6-0.5,1.6-0.8,2.8-0.8c0.5,0,1,0,1.4,0.1c0.4,0.1,0.8,0.2,1.1,0.4l2.4-0.2v1.5 h-1.5c0.2,0.4,0.2,0.8,0.2,1.3c0,1-0.3,1.7-0.9,2.2s-1.5,0.8-2.7,0.8c-0.7,0-1.2-0.1-1.6-0.2c-0.1,0.1-0.2,0.2-0.3,0.3 c-0.1,0.1-0.1,0.2-0.1,0.4c0,0.2,0.1,0.3,0.2,0.4c0.1,0.1,0.3,0.2,0.6,0.2l2.7,0.2c1,0.1,1.7,0.3,2.2,0.6c0.5,0.3,0.8,0.9,0.8,1.7 c0,0.6-0.2,1.1-0.5,1.5c-0.4,0.4-0.9,0.8-1.5,1c-0.7,0.2-1.5,0.4-2.4,0.4c-1.3,0-2.3-0.2-3-0.6C88.8,20.1,88.5,19.5,88.5,18.7z M95.1,18.4c0-0.3-0.1-0.5-0.3-0.7s-0.6-0.2-1.1-0.3l-2.7-0.3c-0.2,0.1-0.4,0.3-0.5,0.5c-0.1,0.2-0.2,0.4-0.2,0.6 c0,0.4,0.2,0.8,0.5,1c0.4,0.2,1,0.3,1.8,0.3C94.2,19.5,95.1,19.2,95.1,18.4z M94.3,11.5c0-0.6-0.1-1-0.4-1.2 c-0.3-0.2-0.7-0.3-1.3-0.3c-0.7,0-1.1,0.1-1.4,0.3c-0.3,0.2-0.4,0.6-0.4,1.2s0.1,1,0.4,1.2c0.3,0.2,0.7,0.3,1.4,0.3 c0.6,0,1.1-0.1,1.3-0.4S94.3,12,94.3,11.5z" }),
+                      react.createElement("path", { fill:"#1FBAD6", d: "M99.4,16V5l2-0.1v10.8c0,0.3,0.1,0.5,0.2,0.6c0.1,0.1,0.3,0.2,0.6,0.2c0.3,0,0.6,0,0.9-0.1V18 c-0.4,0.1-1,0.2-1.6,0.2c-0.8,0-1.3-0.2-1.7-0.5S99.4,16.8,99.4,16z" })
+                    )
+                  )
+                );
+              };
+
+            return function App() {
+              var rootElm = react.useRef(null);
+              var _useState = react.useState({
+                width: window.innerWidth,
+                height: window.innerHeight
+              });
+              var windowDimension = _useState[0];
+              var setDimension = _useState[1];
+              react.useEffect(function sideEffect(){
+                function handleResize() {
+                  setDimension({width: window.innerWidth, height: window.innerHeight});
+                };
+                window.addEventListener('resize', handleResize);
+                return function() {window.removeEventListener('resize', handleResize);};
+              }, []);
+              return react.createElement(
+                'div',
+                {style: {position: 'absolute', left: 0, width: '100vw', height: '100vh'}},
+                LogoSvg(),
+                react.createElement(keplerGl.KeplerGl, {
+                  mapboxApiAccessToken: mapboxToken,
+                  id: "map",
+                  width: windowDimension.width,
+                  height: windowDimension.height
+                })
+              )
+            }
+          }(React, KeplerGl, MAPBOX_TOKEN));
+
+          const app = (function createReactReduxProvider(react, reactRedux, KeplerElement) {
+            return react.createElement(
+              reactRedux.Provider,
+              {store},
+              react.createElement(KeplerElement, null)
+            )
+          }(React, ReactRedux, KeplerElement));
+          /** END COMPONENTS **/
+
+          /** Render **/
+          (function render(react, reactDOM, app) {
+            reactDOM.render(app, document.getElementById('app'));
+          }(React, ReactDOM, app));
+        </script>
+        <!-- The next script will show how to interact directly with Kepler map store -->
+        <script>
+          /**
+           * Customize map.
+           * In the following section you can use the store object to dispatch Kepler.gl actions
+           * to add new data and customize behavior
+           */
+          (function customize(keplerGl, store) {
+            const datasets = [{"version":"v1","data":{"id":"yftlsyix","label":"FSMS_Crime_Database.csv","color":[143,47,191],"allData":[["THEFT","2002-04-05",26.30000484,-80.09386064,2002,"Friday","$7,500"],["THEFT","2002-05-31",26.3017394,-80.89136194,2002,"Friday","$37,000"],["THEFT","2003-05-05",25.86832719,-80.22996074,2003,"Monday","$9,000"],["THEFT","2003-12-15",25.86306106,-80.2099131,2003,"Monday","$9,000"],["THEFT","2003-12-22",25.72835109,-80.3993602,2003,"Monday","$9,000"],["THEFT","2003-12-23",25.86180624,-80.20981645,2003,"Tuesday","$9,000"],["THEFT","2004-02-23",26.12106384,-80.18619007,2004,"Monday","$15,690"],["THEFT","2004-03-01",25.90248668,-80.16176239,2004,"Monday","$2,600"],["THEFT","2004-04-12",25.88216729,-80.21080109,2004,"Monday","$10,014"],["THEFT","2004-05-13",25.82104378,-80.2332776,2004,"Thursday","$10,000"],["THEFT","2004-05-18",26.08667353,-80.16099634,2004,"Tuesday","$8,100"],["THEFT","2004-06-24",25.68905466,-80.42271523,2004,"Thursday","$10,000"],["THEFT","2004-06-24",26.75966265,-80.11674069,2004,"Thursday","$7,000"],["THEFT","2004-07-06",26.06637246,-80.21260044,2004,"Tuesday","$8,000"],["THEFT","2004-07-21",26.08884608,-80.16819383,2004,"Wednesday","$8,100"],["THEFT","2004-08-01",25.796962,-80.18913801,2004,"Sunday","$16,000"],["THEFT","2004-08-05",26.35519652,-80.09006865,2004,"Thursday","$6,350"],["THEFT","2004-08-10",28.35492262,-80.6987768,2004,"Tuesday","$19,000"],["THEFT","2004-08-10",26.2370928,-80.14158095,2004,"Tuesday","$7,500"],["THEFT","2004-09-01",25.79446442,-80.14115998,2004,"Wednesday","$16,000"],["THEFT","2004-09-01",25.89798884,-80.24365545,2004,"Wednesday","$6,520"],["THEFT","2004-09-01",25.58942378,-80.35857977,2004,"Wednesday","$5,000"],["THEFT","2004-09-22",25.97948196,-80.31127266,2004,"Wednesday","$14,700"],["THEFT","2004-10-01",25.98641933,-80.2068586,2004,"Friday","$11,200"],["THEFT","2004-10-04",25.89998126,-80.16085048,2004,"Monday","$8,000"],["THEFT","2004-10-18",25.91883945,-80.24999102,2004,"Monday","$5,119"],["THEFT","2004-10-19",26.09248178,-80.14386718,2004,"Tuesday","$9,500"],["THEFT","2004-10-21",26.09285732,-80.14105783,2004,"Thursday","$13,700"],["THEFT","2004-10-21",25.83331794,-80.19871503,2004,"Thursday","$8,000"],["THEFT","2004-10-25",26.1002335,-80.13683964,2004,"Monday","$9,500"],["STRONG ARM","2004-10-27",25.77481622,-80.19657606,2004,"Wednesday","$8,500"],["THEFT","2004-10-28",25.90077262,-80.18892002,2004,"Thursday","$11,500"],["THEFT","2004-10-28",25.78966696,-80.13419914,2004,"Thursday","$9,000"],["THEFT","2004-10-28",26.12546238,-80.23882568,2004,"Thursday","$9,000"],["THEFT","2004-10-29",25.77554742,-80.19073842,2004,"Friday","$4,000"],["THEFT","2004-11-01",25.79955608,-80.1272799,2004,"Monday","$16,000"],["THEFT","2004-11-01",26.01079396,-80.24819192,2004,"Monday","$10,000"],["THEFT","2004-11-04",25.79470575,-80.18904078,2004,"Thursday","$16,000"],["THEFT","2004-11-08",26.00915112,-80.24820476,2004,"Monday","$1,500"],["THEFT","2004-12-01",26.09281733,-80.14054378,2004,"Wednesday","$19,000"],["THEFT","2004-12-01",25.91475489,-80.26632223,2004,"Wednesday","$8,000"],["THEFT","2004-12-01",25.83447803,-80.19217878,2004,"Wednesday","$8,000"],["THEFT","2004-12-13",25.82961124,-80.19193986,2004,"Monday","$10,000"],["THEFT","2004-12-23",26.58894724,-80.11366321,2004,"Thursday","$7,818"],["THEFT","2005-01-01",25.87536925,-80.2144172,2005,"Saturday","$8,000"],["THEFT","2005-01-03",26.09301096,-80.15335963,2005,"Monday","$8,100"],["THEFT","2005-02-01",25.88921477,-80.15676347,2005,"Tuesday","$200,000"],["THEFT","2005-02-01",26.10027212,-80.13480952,2005,"Tuesday","$8,100"],["THEFT","2005-02-08",25.98106418,-80.14220595,2005,"Tuesday","$6,684"],["THEFT","2005-02-10",25.72215848,-80.27976108,2005,"Thursday","$8,000"],["THEFT","2005-02-23",26.03829861,-80.24898767,2005,"Wednesday","$13,000"],["THEFT","2005-02-23",25.98046875,-80.32021676,2005,"Wednesday","$3,775"],["THEFT","2005-02-25",25.8490836,-80.18473721,2005,"Friday","$8,000"],["THEFT","2005-03-11",25.89813939,-80.16696073,2005,"Friday","$8,000"],["THEFT","2005-03-25",25.64751484,-80.41129926,2005,"Friday","$10,000"],["THEFT","2005-04-05",25.96890928,-80.24683011,2005,"Tuesday","$13,000"],["THEFT","2005-04-29",25.83222668,-80.20405626,2005,"Friday","$5,500"],["THEFT","2005-05-03",25.82981738,-80.18505187,2005,"Tuesday","$3,000"],["THEFT","2005-05-05",25.83222078,-80.20414483,2005,"Thursday","$5,500"],["STRONG ARM","2005-05-23",25.96499039,-80.20117075,2005,"Monday","$8,000"],["THEFT","2005-05-24",25.96368094,-80.24655332,2005,"Tuesday","$8,000"],["THEFT","2005-05-25",25.89278872,-80.18448359,2005,"Wednesday","$8,000"],["STRONG ARM","2005-06-08",25.89737894,-80.23536432,2005,"Wednesday","$8,000"],["THEFT","2005-06-13",25.80146544,-80.1909187,2005,"Monday","$6,738"],["STRONG ARM","2005-06-15",25.81766007,-80.19336705,2005,"Wednesday","$10,000"],["THEFT","2005-06-16",26.25569335,-80.14076187,2005,"Thursday","$15,000"],["THEFT","2005-06-23",26.70539752,-80.05263528,2005,"Thursday","$21,000"],["THEFT","2005-06-26",28.23687506,-82.35218887,2005,"Sunday","$8,000"],["THEFT","2005-07-08",26.10038122,-80.25728729,2005,"Friday","$13,300"],["THEFT","2005-07-10",26.0108833,-80.11580686,2005,"Sunday","$8,000"],["THEFT","2005-07-13",25.96287946,-80.14950471,2005,"Wednesday","$550"],["THEFT","2005-07-14",26.10900205,-80.20166198,2005,"Thursday","$10,000"],["THEFT","2005-07-20",25.9407327,-80.24541178,2005,"Wednesday","$12,000"],["STRONG ARM","2005-07-27",25.81248329,-80.19335831,2005,"Wednesday","$12,000"],["THEFT","2005-08-09",26.12067838,-80.19645462,2005,"Tuesday","$8,000"],["THEFT","2005-08-17",25.99526942,-80.2071216,2005,"Wednesday","$9,000"],["THEFT","2005-09-02",25.95674582,-80.20561646,2005,"Friday","$18,000"],["THEFT","2005-09-27",25.95555787,-80.24578853,2005,"Tuesday","$8,100"],["THEFT","2005-10-04",26.75090378,-80.05449933,2005,"Tuesday","$14,500"],["THEFT","2005-10-04",25.78972086,-80.32269436,2005,"Tuesday","$15,500"],["THEFT","2005-10-09",28.41402879,-80.95295003,2005,"Sunday","$28,000"],["BREAK-IN ATTEMPT","2005-10-12",26.05865825,-80.20771401,2005,"Wednesday","$0"],["STRONG ARM","2005-10-12",25.91726018,-80.23614678,2005,"Wednesday","$8,000"],["THEFT","2005-10-12",25.79683864,-80.34319603,2005,"Wednesday","$15,000"],["THEFT","2005-11-11",25.64925987,-80.33338327,2005,"Friday","$12,000"],["THEFT","2005-11-14",30.30707325,-81.7492956,2005,"Monday","$24,500"],["THEFT","2005-11-15",25.47721213,-80.46597165,2005,"Tuesday","$8,000"],["THEFT","2005-11-16",26.1354187,-80.34062567,2005,"Wednesday","$8,000"],["THEFT","2005-11-16",25.5047216,-80.43750925,2005,"Wednesday","$10,000"],["THEFT","2005-12-04",27.75946517,-80.53562497,2005,"Sunday","$1,555"],["THEFT","2006-01-10",25.70940623,-80.26091805,2006,"Tuesday","$8,000"],["THEFT","2006-01-23",26.16121101,-81.68681389,2006,"Monday","$26,000"],["THEFT","2006-01-25",26.18433394,-81.68947469,2006,"Wednesday","$11,000"],["THEFT","2006-01-25",26.15326953,-81.75240975,2006,"Wednesday","$8,000"],["THEFT","2006-01-31",26.3305763,-81.75185558,2006,"Tuesday","$12,000"],["THEFT","2006-02-02",25.92453452,-80.30910611,2006,"Thursday","$14,000"],["STRONG ARM","2006-02-06",25.91530171,-80.23608626,2006,"Monday","$8,000"],["THEFT","2006-02-08",26.49309656,-81.79270325,2006,"Wednesday","$25,000"],["STRONG ARM","2006-02-21",25.85548478,-80.24967574,2006,"Tuesday","$10,000"],["THEFT","2006-02-24",28.37172252,-81.40458032,2006,"Friday","$10,000"],["THEFT","2006-03-05",29.09762185,-81.34068501,2006,"Sunday","$22,000"],["THEFT","2006-04-09",27.94451207,-82.7301363,2006,"Sunday","$18,000"],["THEFT","2006-04-19",25.81840601,-80.19335631,2006,"Wednesday","$12,000"],["THEFT","2006-07-28",26.0293146,-80.36014481,2006,"Friday","$6,500"],["THEFT","2006-09-18",25.96381135,-80.1442478,2006,"Monday","$16,500"],["THEFT","2006-11-07",27.45102762,-82.52991058,2006,"Tuesday","$30,000"],["THEFT","2006-11-10",28.64035374,-81.5167321,2006,"Friday","$12,000"],["THEFT","2006-11-15",26.09255917,-80.16125935,2006,"Wednesday","$40,000"],["THEFT","2007-01-30",26.08195485,-80.24989672,2007,"Tuesday","$3,000"],["THEFT","2007-04-10",25.47485728,-80.47966962,2007,"Tuesday","$10,398"],["THEFT","2007-05-08",26.10746709,-80.20172768,2007,"Tuesday","$10,000"],["THEFT","2007-05-15",26.28639348,-80.20225024,2007,"Tuesday","$15,000"],["STRONG ARM","2007-05-16",26.12081371,-80.20187625,2007,"Wednesday","$9,000"],["THEFT","2007-05-30",26.67577758,-80.05239433,2007,"Wednesday","$10,000"],["THEFT","2007-05-31",26.67581114,-80.05409529,2007,"Thursday","$8,059"],["THEFT","2007-06-05",26.08654692,-80.20303089,2007,"Tuesday","$25,000"],["THEFT","2007-06-07",26.26053031,-80.12737968,2007,"Thursday","$40,000"],["STRONG ARM","2007-06-08",25.81197692,-80.232181,2007,"Friday","$4,600"],["THEFT","2007-06-19",26.38394889,-80.07640917,2007,"Tuesday","$7,500"],["THEFT","2007-06-27",26.37318014,-80.08660542,2007,"Wednesday","$8,000"],["THEFT","2007-07-02",25.98518785,-80.20680766,2007,"Monday","$10,000"],["THEFT","2007-07-03",25.98536306,-80.15427152,2007,"Tuesday","$13,000"],["THEFT","2007-07-11",26.24437949,-80.18628412,2007,"Wednesday","$9,000"],["THEFT","2007-07-11",28.55318551,-81.37983714,2007,"Wednesday","$8,000"],["THEFT","2007-07-11",26.12086362,-80.20171384,2007,"Wednesday","$10,000"],["THEFT","2007-07-12",28.61827829,-81.3656695,2007,"Thursday","$8,000"],["THEFT","2007-07-23",28.07443572,-82.73888844,2007,"Monday","$30,000"],["STRONG ARM","2007-08-24",25.96585619,-80.26704803,2007,"Friday","$9,688"],["THEFT","2007-10-26",30.90233572,-86.36414026,2007,"Friday","$22,000"],["THEFT","2007-11-26",25.8078577,-80.2136542,2007,"Monday","$10,000"],["THEFT","2007-12-04",25.74367374,-80.25433001,2007,"Tuesday","$8,000"],["THEFT","2007-12-13",26.18112972,-80.145115,2007,"Thursday","$7,000"],["THEFT","2007-12-18",26.31845628,-80.092054,2007,"Tuesday","$26,000"],["THEFT","2007-12-28",26.13373876,-80.14203805,2007,"Friday","$50,000"],["THEFT","2008-01-17",25.97112902,-80.20617332,2008,"Thursday","$25,000"],["THEFT","2008-02-01",26.15629146,-80.10171915,2008,"Friday","$10,000"],["THEFT","2008-03-05",25.9589944,-80.1477246,2008,"Wednesday","$9,000"],["THEFT","2008-03-06",26.2319895,-80.11912854,2008,"Thursday","$13,000"],["THEFT","2008-03-06",25.98297565,-80.20668037,2008,"Thursday","$25,000"],["THEFT","2008-03-07",25.93903432,-80.29654488,2008,"Friday","$5,000"],["THEFT","2008-03-07",26.53726635,-80.06470443,2008,"Friday","$8,000"],["THEFT","2008-03-10",26.10616888,-80.20164161,2008,"Monday","$9,000"],["THEFT","2008-04-01",26.67654666,-80.05600237,2008,"Tuesday","$750"],["THEFT","2008-04-01",26.09792406,-80.36576038,2008,"Tuesday","$750"],["THEFT","2008-04-27",26.12600821,-80.1406569,2008,"Sunday","$25,000"],["STRONG ARM","2008-04-30",25.7613888,-80.2877777,2008,"Wednesday","$11,000"],["THEFT","2008-05-02",25.98450422,-80.20667872,2008,"Friday","$25,000"],["THEFT","2008-05-08",28.01227845,-82.15635502,2008,"Thursday","$5,000"],["THEFT","2008-05-12",25.97965288,-80.30725361,2008,"Monday","$10,000"],["THEFT","2008-06-03",26.70771833,-80.05509719,2008,"Tuesday","$45,000"],["THEFT","2008-06-16",28.67312727,-81.50214463,2008,"Monday","$5,000"],["THEFT","2008-06-18",26.35004006,-80.08987447,2008,"Wednesday","$8,000"],["THEFT","2008-06-21",30.24420398,-81.58072561,2008,"Saturday","$45,000"],["THEFT","2008-06-24",26.03218636,-80.20840293,2008,"Tuesday","$8,000"],["THEFT","2008-07-06",26.61646445,-80.08675806,2008,"Sunday","$14,500"],["THEFT","2008-07-28",25.83817588,-80.25784301,2008,"Monday","$10,000"],["THEFT","2008-07-28",25.84498419,-80.23553456,2008,"Monday","$13,500"],["THEFT","2008-08-02",26.0297888,-80.27834704,2008,"Saturday","$17,912"],["THEFT","2008-08-07",26.34889511,-80.09211561,2008,"Thursday","$10,000"],["THEFT","2008-08-27",25.80996793,-80.20147373,2008,"Wednesday","$24,000"],["THEFT","2008-08-27",26.16643802,-80.14645922,2008,"Wednesday","$1,200"],["THEFT","2008-08-27",26.79941821,-80.0535789,2008,"Wednesday","$17,000"],["STRONG ARM","2008-09-08",25.96406832,-80.22993825,2008,"Monday","$13,000"],["STRONG ARM","2008-09-17",25.97115071,-80.23160405,2008,"Wednesday","$9,900"],["THEFT","2008-09-27",26.0424756,-80.14366279,2008,"Saturday","$10,000"],["STRONG ARM","2008-10-08",25.97088915,-80.20581451,2008,"Wednesday","$8,000"],["THEFT","2008-10-11",27.33021377,-80.41053101,2008,"Saturday","$10,000"],["THEFT","2008-10-15",30.45651511,-81.91336149,2008,"Wednesday","$40,000"],["THEFT","2008-10-17",25.7814318,-80.37555044,2008,"Friday","$12,000"],["THEFT","2008-10-27",25.68252748,-80.33801529,2008,"Monday","$7,000"],["STRONG ARM","2008-10-30",25.78114518,-80.24599505,2008,"Thursday","$8,500"],["THEFT","2008-11-01",26.12576056,-80.15065331,2008,"Saturday","$8,000"],["THEFT","2008-11-17",25.76154472,-80.42858797,2008,"Monday","$10,000"],["THEFT","2008-12-15",25.80933419,-80.23211852,2008,"Monday","$10,000"],["THEFT","2008-12-16",26.5148018,-80.05935292,2008,"Tuesday","$8,000"],["STRONG ARM","2008-12-22",25.83558911,-80.21683819,2008,"Monday","$10,000"],["THEFT","2009-01-28",25.80915793,-80.20752334,2009,"Wednesday","$13,000"],["THEFT","2009-02-19",25.74267371,-80.43167351,2009,"Thursday","$36,000"],["THEFT","2009-04-01",26.04568311,-80.20895031,2009,"Wednesday","$10,000"],["THEFT","2009-05-27",25.73274763,-80.34994737,2009,"Wednesday","$8,000"],["THEFT","2009-07-07",25.8403335,-80.24965028,2009,"Tuesday","$13,000"],["THEFT","2009-07-09",25.79241389,-80.18886111,2009,"Thursday","$36,000"],["THEFT","2009-07-10",26.13448059,-80.2183926,2009,"Friday","$8,000"],["THEFT","2009-07-28",26.14154075,-80.11983876,2009,"Tuesday","$7,000"],["THEFT","2009-09-03",25.82996913,-80.18782131,2009,"Thursday","$8,000"],["THEFT","2009-09-10",26.07140753,-80.21536827,2009,"Thursday","$70,000"],["THEFT","2009-09-15",25.99158461,-80.16525763,2009,"Tuesday","$7,000"],["THEFT","2009-09-22",25.75910201,-80.2026963,2009,"Tuesday","$10,000"],["THEFT","2009-09-25",26.1074269,-80.2817384,2009,"Friday","$13,000"],["THEFT","2009-09-30",26.23164375,-80.10087799,2009,"Wednesday","$9,000"],["THEFT","2009-10-01",25.67369928,-80.32694399,2009,"Thursday","$9,000"],["THEFT","2009-10-05",26.4212588,-80.09458548,2009,"Monday","$10,000"],["THEFT","2009-10-05",28.56360461,-81.3691308,2009,"Monday","$79,200"],["BREAK-IN ATTEMPT","2009-10-08",26.11733342,-80.33228913,2009,"Thursday","$0"],["THEFT","2009-10-11",25.84876944,-80.19566944,2009,"Sunday","$15,000"],["THEFT","2009-10-12",25.69343655,-80.28360531,2009,"Monday","$14,000"],["THEFT","2009-10-15",26.08146622,-80.12408244,2009,"Thursday","$15,000"],["THEFT","2009-10-16",26.10367156,-80.20159462,2009,"Friday","$8,500"],["THEFT","2009-10-19",26.10479057,-80.36379854,2009,"Monday","$39,203"],["THEFT","2009-10-22",26.38778963,-80.11149893,2009,"Thursday","$8,000"],["THEFT","2009-10-22",25.80676612,-80.19522791,2009,"Thursday","$11,000"],["THEFT","2009-10-22",25.984725,-80.16225,2009,"Thursday","$8,000"],["THEFT","2009-11-04",26.39169444,-80.09781111,2009,"Wednesday","$20,000"],["THEFT","2009-11-10",25.89861111,-80.32069444,2009,"Tuesday","$500"],["THEFT","2009-11-11",25.97831389,-80.14163333,2009,"Wednesday","$12,000"],["THEFT","2009-11-16",26.51451944,-80.07880556,2009,"Monday","$1,185"],["THEFT","2009-12-03",25.774721,-80.14027777,2009,"Thursday","$30,000"],["THEFT","2009-12-15",26.1857967,-80.257877,2009,"Tuesday","$8,300"],["THEFT","2009-12-16",26.72855,-80.052364,2009,"Wednesday","$38,000"],["THEFT","2010-01-12",26.45404166,-80.14216388,2010,"Tuesday","$17,000"],["THEFT","2010-02-04",26.118749,-80.325361,2010,"Thursday","$6,000"],["THEFT ATTEMPT","2010-02-10",25.92118611,-80.293025,2010,"Wednesday","$0"],["THEFT","2010-03-30",25.964166,-80.246666,2010,"Tuesday","$600"],["THEFT","2010-04-19",26.120612,-80.32705,2010,"Monday","$15,000"],["THEFT","2010-05-20",28.05724,-81.82055,2010,"Thursday","$1,200"],["THEFT","2010-05-27",26.6905,-80.0958,2010,"Thursday","$49,555"],["THEFT","2010-06-04",28.0731,-81.8292,2010,"Friday","$22,000"],["THEFT","2010-06-11",25.7603,-80.3717,2010,"Friday","$12,000"],["THEFT","2010-06-21",26.0419,-80.2528,2010,"Monday","$11,000"],["THEFT","2010-06-28",25.9869,-80.1431,2010,"Monday","$11,000"],["THEFT","2010-07-12",25.7725,-80.233,2010,"Monday","$11,270"],["THEFT","2010-08-22",27.2858,-80.2989,2010,"Sunday","$22,000"],["THEFT","2010-09-07",29.964964,-82.016342,2010,"Tuesday","$17,000"],["THEFT","2010-09-22",26.3219,-80.0997,2010,"Wednesday","$6,754"],["THEFT","2010-09-24",30.33,-81.4322,2010,"Friday","$15,000"],["THEFT","2010-09-29",25.7168,-80.2736,2010,"Wednesday","$17,000"],["THEFT","2010-10-13",25.9894,-80.1667,2010,"Wednesday","$26,000"],["THEFT","2010-10-28",26.2164,-80.2164,2010,"Thursday","$25,000"],["THEFT","2010-11-09",27.74731,-80.434834,2010,"Tuesday","$84,293"],["THEFT ATTEMPT","2010-11-17",25.788085,-80.199892,2010,"Wednesday","$500"],["THEFT","2011-01-16",27.2858,-80.2989,2011,"Sunday","$37,000"],["THEFT","2011-02-01",26.0517,-80.1445,2011,"Tuesday","$5,000"],["THEFT","2011-02-23",26.2325,-80.1103,2011,"Wednesday","$13,400"],["THEFT","2011-02-25",26.6911,-80.0681,2011,"Friday","$28,750"],["THEFT","2011-03-31",26.6266,-80.0803,2011,"Thursday","$30,000"],["THEFT","2011-04-18",26.0049,-80.1183,2011,"Monday","$12,000"],["THEFT","2011-05-31",25.86811111,-80.24261111,2011,"Tuesday","$5,000"],["THEFT","2011-08-22",25.9768,-80.3103,2011,"Monday","$9,000"],["THEFT","2011-08-30",28.4394,-81.46783333,2011,"Tuesday","$1,395"],["THEFT","2011-09-06",26.9253,-80.0944,2011,"Tuesday","$0"],["THEFT","2011-11-09",26.3669,-80.1881,2011,"Wednesday","$11,000"],["THEFT","2011-11-17",26.4444,-81.7853,2011,"Thursday","$25,000"],["THEFT","2011-12-22",28.818524,-81.482173,2011,"Thursday","$1,075"],["THEFT","2012-02-28",26.949,-80.0844,2012,"Tuesday","$27,000"],["THEFT","2012-03-02",25.7933,-80.1898,2012,"Friday","$12,000"],["STRONG ARM","2012-07-16",25.84818333,-80.23157778,2012,"Monday","$10,000"],["THEFT","2012-09-12",26.06311111,-80.143525,2012,"Wednesday","$26,000"],["THEFT","2013-01-04",25.928562,-80.1966139,2013,"Friday","$35,000"],["THEFT","2013-02-07",26.07055556,-80.15972222,2013,"Thursday","$26,000"],["THEFT","2013-02-26",26.45525278,-80.18936944,2013,"Tuesday","$24,100"],["THEFT","2013-05-08",26.14468056,-80.33792222,2013,"Wednesday","$13,500"],["THEFT","2013-08-16",26.27089444,-80.09736389,2013,"Friday","$6,021"],["THEFT","2013-11-21",25.94216111,-80.20703333,2013,"Thursday","$200"],["THEFT","2013-12-02",25.94510278,-80.16415833,2013,"Monday","$8,000"],["THEFT","2013-12-06",26.00560556,-80.18924167,2013,"Friday","$12,000"],["BREAK-IN","2014-01-19",26.19464167,-80.19428055,2014,"Sunday","$180,000"],["BREAK-IN","2014-01-31",28.56341667,-81.3692,2014,"Friday","$8,000"],["BREAK-IN","2014-02-01",26.12632778,-80.14038333,2014,"Saturday","$0"],["BREAK-IN","2014-02-04",25.74169444,-80.23488889,2014,"Tuesday","$108,000"],["STRONG ARM","2014-02-15",25.80234722,-80.18738889,2014,"Saturday","$9,000"],["BREAK-IN","2014-03-02",26.23204167,-80.12133889,2014,"Sunday","$87,729"],["BREAK-IN","2014-03-16",26.10658889,-80.28706667,2014,"Sunday","$250,000"],["BREAK-IN","2014-03-16",26.20683055,-80.14508055,2014,"Sunday","$42,000"],["BREAK-IN","2014-03-22",26.634528,-80.222944,2014,"Saturday","$118,000"],["BREAK-IN","2014-03-23",26.02407778,-80.22981944,2014,"Sunday","$0"],["BREAK-IN","2014-03-23",25.81774722,-80.3221833,2014,"Sunday","$200,000"],["BREAK-IN","2014-03-23",26.19737222,-80.15084167,2014,"Sunday","$50,000"],["BREAK-IN","2014-03-26",25.79180833,-80.35593333,2014,"Wednesday","$10,000"],["BREAK-IN","2014-03-26",25.92891944,-80.19710278,2014,"Wednesday","$0"],["BREAK-IN","2014-03-26",25.79188889,-80.34808611,2014,"Wednesday","$29,000"],["BREAK-IN","2014-03-30",25.72335833,-80.42005556,2014,"Sunday","$0"],["BREAK-IN","2014-03-30",26.046475,-80.22831944,2014,"Sunday","$0"],["THEFT","2014-04-02",33.554904,-84.53886,2014,"Wednesday","$6,000"],["THEFT","2014-04-19",25.75043333,-80.33998333,2014,"Saturday","$5,800"],["THEFT","2014-05-12",28.05482,-81.94654,2014,"Monday","$12,500"],["THEFT","2014-05-17",25.867113,-80.282119,2014,"Saturday","$35,200"],["THEFT","2014-05-19",25.926681,-80.309361,2014,"Monday","$19,000"],["THEFT","2014-06-18",25.8357916666667,-80.2143611111111,2014,"Wednesday","$700"],["THEFT","2014-07-14",26.067613,-80.16303,2014,"Monday","$15,000"],["THEFT","2014-09-03",25.88275,-80.241,2014,"Wednesday","$17,000"],["THEFT","2014-09-17",25.76883,-80.19239,2014,"Wednesday","$34,490"],["THEFT","2014-09-25",25.86655,-80.17727,2014,"Thursday","$30,000"],["THEFT","2014-10-13",25.830487,-80.232972,2014,"Monday","$4,500"],["THEFT","2014-10-09",26.19423,-80.25322,2014,"Thursday","$7,000"],["THEFT","2014-10-28",25.90614,-80.15887,2014,"Tuesday","$8,750"],["BREAK-IN","2014-12-13",28.43861,-81.41139,2014,"Saturday","$250,000"],["THEFT","2015-03-02",25.64494722,-80.33583889,2015,"Monday","$25,800"],["THEFT","2015-03-09",26.716029,-80.227166,2015,"Monday","$8,300"],["THEFT","2015-04-09",25.927978,-80.168275,2015,"Thursday","$29,600"],["THEFT","2015-04-09",25.7941583,-80.234964,2015,"Thursday","$700"],["THEFT ATTEMPT","2015-05-18",25.883583,-80.210831,2015,"Monday","$0"],["THEFT","2015-05-20",25.855615,-80.209336,2015,"Wednesday","$5,000"],["THEFT","2015-07-07",25.994204,-80.336466,2015,"Tuesday","$4,200"],["BREAK-IN","2015-08-25",30.318385,-81.729376,2015,"Tuesday","$8,000"],["THEFT","2015-10-29",25.9533,-80.2953,2015,"Thursday","$5,000"],["THEFT ATTEMPT","2015-12-17",26.302328,-80.201856,2015,"Thursday","$0"],["THEFT ATTEMPT","2015-12-23",25.847222,-80.193333,2015,"Wednesday","$0"],["THEFT","2016-01-11",26.190374,-80.134473,2016,"Monday","$36,000"],["THEFT ATTEMPT","2016-01-10",26.204813,-80.167407,2016,"Sunday","$0"],["THEFT","2016-02-07",26.193926,-80.194425,2016,"Sunday","$0"],["THEFT","2016-02-09",26.166143,-80.15466,2016,"Tuesday","$5,000"],["THEFT","2016-02-26",26.693042,-80.156823,2016,"Friday","$4,000"],["STRONG ARM","2016-02-29",25.875839,-80.226388,2016,"Monday","$4,000"],["THEFT","2016-06-01",25.964112,-80.225061,2016,"Wednesday","$8,000"],["THEFT","2016-06-15",26.683452,-80.138154,2016,"Wednesday","$4,000"],["THEFT","2016-07-13",25.817227,-80.220635,2016,"Wednesday","$8,000"],["THEFT","2016-07-21",26.288262,-80.162763,2016,"Thursday","$26,000"],["THEFT","2016-09-20",25.962603,-80.148555,2016,"Tuesday","$3,000"],["THEFT","2016-11-07",28.55827222,-81.67552583,2016,"Monday","$8,000"],["THEFT","2016-11-08",26.013342,-80.141064,2016,"Tuesday","$15,000"],["THEFT","2016-11-08",25.915125,-80.25888611,2016,"Tuesday","$8,000"],["THEFT","2017-01-03",25.77318889,-80.33138889,2017,"Tuesday","$36,000"],["THEFT","2017-01-05",29.64586944,-82.61261111,2017,"Thursday","$17,500"],["THEFT","2017-01-12",25.96875556,-80.16824722,2017,"Thursday","$28,000"],["THEFT","2017-02-14",26.01204444,-80.35983611,2017,"Tuesday","$16,200"],["THEFT","2017-03-20",25.88263,-80.227539,2017,"Monday","$10,000"],["THEFT","2017-04-25",27.777567,-82.652698,2017,"Tuesday","$30,000"],["THEFT","2017-05-02",30.105378,-81.546575,2017,"Tuesday","$30,000"],["THEFT","2017-05-03",26.082937,-80.250933,2017,"Wednesday","$27,000"],["THEFT","2017-05-04",25.867817,-80.242361,2017,"Thursday","$1,000"],["THEFT","2017-05-10",25.847636,-80.24265,2017,"Wednesday","$13,000"],["THEFT","2017-06-01",26.0548,-80.1691,2017,"Thursday","$6,650"],["THEFT","2017-06-06",25.84083,-80.28361,2017,"Tuesday","$85,953"],["THEFT","2017-06-15",26.124522,-80.25736,2017,"Thursday","$25,150"],["THEFT ATTEMPT","2017-06-16",26.032397,-80.203921,2017,"Friday","$0"],["THEFT","2017-07-11",25.85988,-80.24217,2017,"Tuesday","$9,000"],["THEFT","2017-07-17",25.85988,-80.24217,2017,"Monday","$8,460"],["THEFT","2017-08-09",27.97409,-82.31859,2017,"Wednesday","$12,990"],["THEFT","2017-08-14",33.4902718,-84.583308,2017,"Monday","$17,750"],["THEFT","2018-02-14",25.982172,-80.247625,2018,"Wednesday","$55,000"],["THEFT","2018-03-30",26.103052,-80.250588,2018,"Friday","$6,800"],["THEFT","2018-04-30",25.827831,-80.234037,2018,"Monday","$10,000"],["THEFT","2018-04-24",25.895067,-80.163563,2018,"Tuesday","$12,000"],["THEFT","2018-05-09",25.80544444,-80.24055556,2018,"Wednesday","$11,000"],["THEFT","2018-06-21",26.008817,-80.42954,2018,"Thursday","$12,000"],["THEFT","2018-07-02",25.909671,-80.247792,2018,"Monday","$5,000"],["THEFT","2018-07-10",26.19623,-80.132503,2018,"Tuesday","$15,000"],["THEFT ATTEMPT","2018-07-17",26.070374,-80.181601,2018,"Tuesday","$0"],["THEFT ATTEMPT","2018-07-17",26.089571,-80.162876,2018,"Tuesday","$0"],["THEFT","2018-07-27",25.85165,-80.239874,2018,"Friday","$25,000"],["THEFT","2018-08-10",25.882763,-80.242794,2018,"Friday","$15,000"],["THEFT","2018-08-23",26.051611,-80.158133,2018,"Thursday","$38,000"]],"fields":[{"name":"CRIME_TYPE","type":"string","format":"","analyzerType":"STRING"},{"name":"DATE","type":"date","format":"YYYY-M-D","analyzerType":"DATE"},{"name":"point_latitude","type":"real","format":"","analyzerType":"FLOAT"},{"name":"point_longitude","type":"real","format":"","analyzerType":"FLOAT"},{"name":"Year","type":"integer","format":"","analyzerType":"INT"},{"name":"Weekday","type":"string","format":"","analyzerType":"STRING"},{"name":"ESTIMATE_VALUE","type":"string","format":"","analyzerType":"STRING"}]}}];
+            const config = {"version":"v1","config":{"visState":{"filters":[{"dataId":["yftlsyix"],"id":"1a8s0zr2","name":["Year"],"type":"range","value":[2002,2018],"enlarged":false,"plotType":"histogram","animationWindow":"free","yAxis":null,"speed":1}],"layers":[{"id":"p2qpbxi","type":"heatmap","config":{"dataId":"yftlsyix","label":"point","color":[255,203,153],"columns":{"lat":"point_latitude","lng":"point_longitude"},"isVisible":true,"visConfig":{"opacity":0.8,"colorRange":{"name":"ColorBrewer YlGnBu-6","type":"sequential","category":"ColorBrewer","colors":["#ffffcc","#c7e9b4","#7fcdbb","#41b6c4","#2c7fb8","#253494"]},"radius":5.2},"hidden":false,"textLabel":[{"field":null,"color":[255,255,255],"size":18,"offset":[0,0],"anchor":"start","alignment":"center"}]},"visualChannels":{"weightField":null,"weightScale":"linear"}}],"interactionConfig":{"tooltip":{"fieldsToShow":{"yftlsyix":[{"name":"CRIME_TYPE","format":null},{"name":"DATE","format":null},{"name":"Year","format":null},{"name":"Weekday","format":null},{"name":"ESTIMATE_VALUE","format":null}]},"compareMode":false,"compareType":"absolute","enabled":true},"brush":{"size":0.5,"enabled":false},"geocoder":{"enabled":false},"coordinate":{"enabled":false}},"layerBlending":"normal","splitMaps":[],"animationConfig":{"currentTime":null,"speed":1}},"mapState":{"bearing":0,"dragRotate":false,"latitude":28.374623761451584,"longitude":-85.01628534583263,"pitch":0,"zoom":6,"isSplit":false},"mapStyle":{"styleType":"dark","topLayerGroups":{},"visibleLayerGroups":{"label":true,"road":true,"border":false,"building":true,"water":true,"land":true,"3d building":false},"threeDBuildingColor":[9.665468314072013,17.18305478057247,31.1442867897876],"mapStyles":{}}}};
+
+            const loadedData = keplerGl.KeplerGlSchema.load(
+              datasets,
+              config
+            );
+
+            store.dispatch(keplerGl.addDataToMap({
+              datasets: loadedData.datasets,
+              config: loadedData.config,
+              options: {
+                centerMap: false
+              }
+            }));
+          }(KeplerGl, store))
+        </script>
+      </body>
+    </html>
+  
