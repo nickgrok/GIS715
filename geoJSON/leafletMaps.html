@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+	<title> Nicholas Grokhowsky - Leaflet Lab </title>
+
+	<meta charset="utf-8">
+	<meta http-quiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+
+	<link rel="stylesheet" href="css/bootstrap.css">
+	<link rel="stylesheet" href="css/styles.css">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"  integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin=""/> 
+	 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+	integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script> 
+
+
+
+	<script type="application/ld+json">
+
+	{
+	  "@context": "https://schema.org/",
+	  "@type": "Person",
+	  "name": "Nicholas Grokhowsky",
+	  "author": "Nicholas Grokhowsky",
+	  "image": "",
+	  "description": "",	  
+	}
+	
+</script>
+
+</head>
+
+<body>
+
+	<div class="container">
+		<div class="container border-bottom border-top">
+			<table>
+			    <tr>
+			        <th><h1>Denver Map</h1></th></tr>
+			    <tr>
+			        <td><div id="mapid"></div></td>
+			    </tr>
+			</table>
+		</div>
+	</div>
+
+
+
+
+	<script
+	  src="https://code.jquery.com/jquery-3.4.0.min.js"
+	  integrity="sha256-BJeo0qm959uMBGb65z40ejJYGSgR7REI4+CW1fNKwOg="
+	  crossorigin="anonymous">
+	  	
+	</script>
+
+	<script src="js/bootstrap.js"> </script>
+
+	<script>
+		
+		var mymap = L.map('mapid').setView([39.7502,-104.9490], 17);
+		L.tileLayer(
+		'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoibmlja2dyb2siLCJhIjoiY2trY3ljajF6MG1nYzJvcGJpeGg5a2VjcSJ9.ajW_4Up4s_tV8BwkhRBJTw', 
+		{
+		attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+		    maxZoom: 18,
+		    id: 'mapbox/streets-v11',
+		    tileSize: 512,
+		    zoomOffset: -1,
+		    accessToken: 'pk.eyJ1Ijoibmlja2dyb2siLCJhIjoiY2trY3ljajF6MG1nYzJvcGJpeGg5a2VjcSJ9.ajW_4Up4s_tV8BwkhRBJTw'
+		}).addTo(mymap);
+
+
+		var gjData = '.data/trees.geojson'
+
+		var pointStyle = {
+			radius: 3,
+			fillColor: "FFA500",
+			color: "FFA500",
+			weight: 1,
+			opacity: 0.35,
+			fillOpacity: 0.8
+		};
+		
+		let xhr = new XMLHttpRequest();
+		xhr.open('GET', gjData);
+		xhr.setRequestHeader('Content-Type', 'application/json');
+		xhr.responseType = 'json';
+		xhr.onload = function() {
+		    if (xhr.status !== 200) return
+		    treeLayer = L.geoJSON(xhr.response, {
+                            pointToLayer: function (feature, latlng) {
+                                   return L.circleMarker(latlng, pointStyle);
+       	                   }
+                        }
+                      )
+           treeLayer.addTo(mymap);
+		};
+		xhr.send();
+
+
+	
+
+
+
+
+
+
+
+
+	</script>
+
+</body>
+</html>
