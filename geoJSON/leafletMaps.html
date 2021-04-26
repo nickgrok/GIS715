@@ -71,8 +71,8 @@
 
 		var pointStyle = {
 			radius: 3,
-			fillColor: "FFA500",
-			color: "FFA500",
+			fillColor: "#134413",
+			color: "#000",
 			weight: 1,
 			opacity: 0.35,
 			fillOpacity: 0.8
@@ -84,7 +84,13 @@
 		xhr.responseType = 'json';
 		xhr.onload = function() {
 		    if (xhr.status !== 200) return
-		    L.geoJSON(xhr.response).addTo(mymap);
+		    treeLayer = L.geoJSON(xhr.response, {
+                            pointToLayer: function (feature, latlng) {
+                                   return L.circleMarker(latlng, pointStyle);
+       	                   }
+                         }
+                      )
+           treeLayer.addTo(mymap);
 		};
 		xhr.send();
 
